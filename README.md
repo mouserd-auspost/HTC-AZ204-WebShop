@@ -93,5 +93,3 @@ Run the console application:
 dotnet run
 ```
 
-
-
