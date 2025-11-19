@@ -56,9 +56,9 @@
             {
                 <div class="product-card">
                     <h3>@product.Name</h3> 
-                    @if (!string.IsNullOrEmpty(product.ImageUrl))
+                    @if (!string.IsNullOrEmpty(product.DisplayImageUrl))
                     {
-                        <img src="~/images/@product.ImageUrl" alt="@product.Name" class="product-image"/>
+                        <img src="@product.DisplayImageUrl" alt="@product.Name" class="product-image"/>
                     }
                     <p>Price: @product.Price.ToString("C")</p>
                     <form method="post" asp-page-handler="ImageClick">

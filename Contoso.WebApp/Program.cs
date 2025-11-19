@@ -23,6 +23,9 @@ builder.Services.AddHttpClient<IContosoAPI>(client => {
 .AddHttpMessageHandler<AuthHandler>()
 .AddTypedClient(client => RestService.For<IContosoAPI>(client));
 
+// Blob image service for resolving ReleaseDate metadata logic.
+builder.Services.AddSingleton<IBlobImageService, BlobImageService>();
+
 
 var app = builder.Build();
 

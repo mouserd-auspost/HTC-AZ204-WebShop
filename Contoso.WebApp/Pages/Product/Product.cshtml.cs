@@ -7,6 +7,7 @@ using Contoso.WebApp.Extensions;
 public class ProductModel : PageModel
 {
     private readonly IContosoAPI _contosoAPI;
+    private readonly IBlobImageService _blobImageService;
 
     public ProductDto Product { get; set; }
 
@@ -16,10 +17,12 @@ public class ProductModel : PageModel
 
     public bool isAdmin { get; set; }
 
+    public string? DisplayImageUrl { get; set; }
 
-    public ProductModel(IContosoAPI contosoAPI)
+    public ProductModel(IContosoAPI contosoAPI, IBlobImageService blobImageService)
     {
         _contosoAPI = contosoAPI;
+        _blobImageService = blobImageService;
     }
    
     public async Task OnGetAsync(int id)
@@ -40,6 +43,10 @@ public class ProductModel : PageModel
         }
 
         Product = response.Content;
+        if (Product != null)
+        {
+            DisplayImageUrl = await _blobImageService.GetDisplayImageUrlAsync(Product.ImageUrl);
+        }
 
         isAdmin = true;
     }
@@ -56,6 +63,10 @@ public class ProductModel : PageModel
         }
 
         Product = response.Content;
+        if (Product != null)
+        {
+            DisplayImageUrl = await _blobImageService.GetDisplayImageUrlAsync(Product.ImageUrl);
+        }
 
         List<OrderItemDto> orderItems = HttpContext.Session.Get<List<OrderItemDto>>("OrderItems") ?? new List<OrderItemDto>();
 

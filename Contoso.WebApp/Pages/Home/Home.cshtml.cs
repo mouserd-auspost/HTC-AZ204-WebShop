@@ -29,11 +29,12 @@ public class HomeModel : PageModel
     public string ErrorMessage { get; set; }
 
     private readonly IContosoAPI _contosoAPI;
+    private readonly IBlobImageService _blobImageService;
 
-
-    public HomeModel(IContosoAPI contosoAPI)
+    public HomeModel(IContosoAPI contosoAPI, IBlobImageService blobImageService)
     {
         _contosoAPI = contosoAPI;
+        _blobImageService = blobImageService;
     }
    
     public async Task OnGetAsync()
@@ -61,10 +62,16 @@ public class HomeModel : PageModel
         }
 
 
-        var pagedProducts = GetPagedFilteredProduct(CurrentPage, CategorySelected);
+        var pagedProducts = await GetPagedFilteredProduct(CurrentPage, CategorySelected);
 
-        Products = pagedProducts.Result.Items;
-        TotalPages = (int)Math.Ceiling((double)pagedProducts.Result.TotalCount / pagedProducts.Result.PageSize);
+        Products = pagedProducts.Items;
+        TotalPages = (int)Math.Ceiling((double)pagedProducts.TotalCount / pagedProducts.PageSize);
+
+        // Resolve blob-based display image URLs with ReleaseDate logic.
+        foreach (var p in Products)
+        {
+            p.DisplayImageUrl = await _blobImageService.GetDisplayImageUrlAsync(p.ImageUrl);
+        }
 
     }
 

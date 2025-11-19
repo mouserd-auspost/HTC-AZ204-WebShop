@@ -14,5 +14,8 @@ public class ProductDto
 
     public byte[] Image { get; set; } 
 
+    // Resolved blob URI taking ReleaseDate metadata into account.
+    public string? DisplayImageUrl { get; set; }
+
 
 }
