@@ -69,9 +69,15 @@ public class ProductsController : ControllerBase
         var conn = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
         var containerName = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONTAINERNAME") ?? Environment.GetEnvironmentVariable("AZURE_STORAGE_CONTAINER_NAME");
 
-        if (string.IsNullOrWhiteSpace(conn) || string.IsNullOrWhiteSpace(containerName))
+        // Ensure we upload to the images container by default if not configured on the server
+        if (string.IsNullOrWhiteSpace(containerName))
         {
-            return StatusCode(500, "Storage configuration not found on server.");
+            containerName = "images";
+        }
+
+        if (string.IsNullOrWhiteSpace(conn))
+        {
+            return StatusCode(500, "Storage connection string not found on server.");
         }
 
         try

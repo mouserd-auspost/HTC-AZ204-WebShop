@@ -65,6 +65,8 @@ cd ../Contoso.Api
 dotnet run
 ```
 
+Configuration note: The frontend uses Azure Blob Storage. Set `AzureStorage:ContainerName` to the upload container (defaults to `images`) and `AzureStorage:ThumbnailContainerName` to the container where thumbnails are served (defaults to `thumbnails`).
+
 ## Data Migration Tool
 
 This console application migrates data from a SQL Server database to Azure Cosmos DB. Follow the steps below to set it up and use it:

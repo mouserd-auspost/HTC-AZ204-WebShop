@@ -11,11 +11,13 @@ using Microsoft.Extensions.Logging;
 
 public class BlobImageService : IBlobImageService
 {
-    private readonly BlobContainerClient _containerClient;
+    private readonly BlobContainerClient _uploadContainerClient;
+    private readonly BlobContainerClient _readContainerClient;
     private readonly string _comingSoonBlobName = "commingsoon.jpg"; // corrected spelling
     private readonly StorageSharedKeyCredential _sharedKeyCredential;
     private readonly string _accountName;
-    private readonly string _containerName;
+    private readonly string _uploadContainerName;
+    private readonly string _readContainerName;
     private readonly int _sasExpiryMinutes;
     private readonly ILogger<BlobImageService> _logger;
 
@@ -27,7 +29,8 @@ public class BlobImageService : IBlobImageService
         {
             throw new InvalidOperationException("Azure Storage connection string not configured. Set AzureStorage:ConnectionString or AZURE_STORAGE_CONNECTION_STRING env var.");
         }
-        _containerName = configuration["AzureStorage:ContainerName"] ?? throw new InvalidOperationException("AzureStorage:ContainerName is not configured.");
+        _uploadContainerName = configuration["AzureStorage:ContainerName"] ?? throw new InvalidOperationException("AzureStorage:ContainerName is not configured.");
+        _readContainerName = configuration["AzureStorage:ThumbnailContainerName"] ?? throw new InvalidOperationException("AzureStorage:ThumbnailContainerName is not configured.");
         _sasExpiryMinutes = int.TryParse(configuration["AzureStorage:SasExpiryMinutes"], out var m) ? m : 60;
 
         // Parse connection string for account and key.
@@ -48,14 +51,15 @@ public class BlobImageService : IBlobImageService
         }
         _accountName = accountName;
         _sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
-        _containerClient = new BlobContainerClient(conn, _containerName);
+        _uploadContainerClient = new BlobContainerClient(conn, _uploadContainerName);
+        _readContainerClient = new BlobContainerClient(conn, _readContainerName);
     }
 
     public async Task<string> UploadImageAsync(string blobName, byte[] content, IDictionary<string, string>? metadata = null)
     {
         if (string.IsNullOrWhiteSpace(blobName)) throw new ArgumentException("blobName must be provided", nameof(blobName));
 
-        var blobClient = _containerClient.GetBlobClient(blobName);
+        var blobClient = _uploadContainerClient.GetBlobClient(blobName);
 
         try
         {
@@ -67,7 +71,7 @@ public class BlobImageService : IBlobImageService
                 await blobClient.SetMetadataAsync(metadata);
             }
 
-            _logger.LogInformation("Uploaded blob {BlobName} to container {Container}", blobName, _containerName);
+            _logger.LogInformation("Uploaded blob {BlobName} to container {Container}", blobName, _uploadContainerName);
             return blobName;
         }
         catch (Exception ex)
@@ -84,7 +88,7 @@ public class BlobImageService : IBlobImageService
             return await GetComingSoonUrlAsync();
         }
 
-        var blobClient = _containerClient.GetBlobClient(blobName);
+        var blobClient = _readContainerClient.GetBlobClient(blobName);
         BlobProperties? props = null;
         try
         {
@@ -151,8 +155,8 @@ public class BlobImageService : IBlobImageService
 
     private async Task<string> GetComingSoonUrlAsync()
     {
-        var comingSoonClient = _containerClient.GetBlobClient(_comingSoonBlobName);
-        try { await _containerClient.ExistsAsync(); } catch { }
+        var comingSoonClient = _readContainerClient.GetBlobClient(_comingSoonBlobName);
+        try { await _readContainerClient.ExistsAsync(); } catch { }
         return GenerateBlobSasUri(comingSoonClient);
     }
 
@@ -161,7 +165,7 @@ public class BlobImageService : IBlobImageService
         // Build SAS granting read access.
         var sasBuilder = new BlobSasBuilder
         {
-            BlobContainerName = _containerName,
+            BlobContainerName = _readContainerName,
             BlobName = blobClient.Name,
             Resource = "b",
             StartsOn = DateTimeOffset.UtcNow.AddMinutes(-5), // clock skew allowance
