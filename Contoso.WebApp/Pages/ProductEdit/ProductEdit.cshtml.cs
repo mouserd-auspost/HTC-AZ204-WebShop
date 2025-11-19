@@ -18,6 +18,7 @@ public class ProductEditModel : PageModel
         public IFormFile Image { get; set; } 
 
         public string ErrorMessage { get; set; }
+        public string? DisplayImageUrl { get; set; }
 
         public ProductEditModel(IContosoAPI contosoAPI, IBlobImageService blobImageService)
         {
@@ -37,6 +38,10 @@ public class ProductEditModel : PageModel
             }
 
             Product = productResponse.Content;
+            if (Product != null)
+            {
+                DisplayImageUrl = await _blobImageService.GetDisplayImageUrlAsync(Product.ImageUrl);
+            }
         }
 
 
