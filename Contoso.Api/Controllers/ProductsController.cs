@@ -3,6 +3,7 @@ using Contoso.Api.Models;
 using Contoso.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Azure.Storage.Blobs;
 
 namespace Contoso.Api.Controllers;
 
@@ -62,12 +63,40 @@ public class ProductsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetUploadBlobUrl([FromBody] List<ProductImageDto> productImage)
     {
-        
-         ///////////////////////
-        //// YOUR CODE HERE ///
-       ///////////////////////
-       
-       return  BadRequest();
+        if (productImage == null || productImage.Count == 0) return BadRequest("No images provided.");
+
+        // Read connection string and container name from environment (server-side).
+        var conn = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
+        var containerName = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONTAINERNAME") ?? Environment.GetEnvironmentVariable("AZURE_STORAGE_CONTAINER_NAME");
+
+        if (string.IsNullOrWhiteSpace(conn) || string.IsNullOrWhiteSpace(containerName))
+        {
+            return StatusCode(500, "Storage configuration not found on server.");
+        }
+
+        try
+        {
+            var containerClient = new Azure.Storage.Blobs.BlobContainerClient(conn, containerName);
+            foreach (var img in productImage)
+            {
+                if (img?.Image == null || string.IsNullOrWhiteSpace(img.ImageUrl)) continue;
+
+                var blobClient = containerClient.GetBlobClient(img.ImageUrl);
+                using var ms = new System.IO.MemoryStream(img.Image);
+                await blobClient.UploadAsync(ms, overwrite: true);
+
+                if (img.Metadata != null && img.Metadata.Count > 0)
+                {
+                    await blobClient.SetMetadataAsync(img.Metadata);
+                }
+            }
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, "Failed to upload images: " + ex.Message);
+        }
     }
 
     [HttpPost("create/bulk")]

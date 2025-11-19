@@ -17,5 +17,8 @@ public class ProductDto
     // Resolved blob URI taking ReleaseDate metadata into account.
     public string? DisplayImageUrl { get; set; }
 
+    // Optional date to gate image visibility; saved as blob metadata when uploading.
+    public DateTime? ReleaseDate { get; set; }
+
 
 }

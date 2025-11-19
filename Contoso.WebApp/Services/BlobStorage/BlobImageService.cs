@@ -51,6 +51,32 @@ public class BlobImageService : IBlobImageService
         _containerClient = new BlobContainerClient(conn, _containerName);
     }
 
+    public async Task<string> UploadImageAsync(string blobName, byte[] content, IDictionary<string, string>? metadata = null)
+    {
+        if (string.IsNullOrWhiteSpace(blobName)) throw new ArgumentException("blobName must be provided", nameof(blobName));
+
+        var blobClient = _containerClient.GetBlobClient(blobName);
+
+        try
+        {
+            using var stream = new System.IO.MemoryStream(content);
+            await blobClient.UploadAsync(stream, overwrite: true);
+
+            if (metadata != null && metadata.Count > 0)
+            {
+                await blobClient.SetMetadataAsync(metadata);
+            }
+
+            _logger.LogInformation("Uploaded blob {BlobName} to container {Container}", blobName, _containerName);
+            return blobName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload blob {BlobName}", blobName);
+            throw;
+        }
+    }
+
     public async Task<string> GetDisplayImageUrlAsync(string? blobName)
     {
         if (string.IsNullOrWhiteSpace(blobName))

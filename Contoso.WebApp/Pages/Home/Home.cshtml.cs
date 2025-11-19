@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Contoso.WebApp.Extensions;
 using Microsoft.AspNetCore.Server.HttpSys;
+using Microsoft.Extensions.Logging;
 
 
 public class HomeModel : PageModel
@@ -30,11 +31,13 @@ public class HomeModel : PageModel
 
     private readonly IContosoAPI _contosoAPI;
     private readonly IBlobImageService _blobImageService;
+    private readonly ILogger<HomeModel> _logger;
 
-    public HomeModel(IContosoAPI contosoAPI, IBlobImageService blobImageService)
+    public HomeModel(IContosoAPI contosoAPI, IBlobImageService blobImageService, ILogger<HomeModel> logger)
     {
         _contosoAPI = contosoAPI;
         _blobImageService = blobImageService;
+        _logger = logger;
     }
    
     public async Task OnGetAsync()
@@ -45,8 +48,16 @@ public class HomeModel : PageModel
             HttpContext.Session.Set("CartCount", 0);
         }
         
-        var category_response = await _contosoAPI.GetCategoriesAsync();
-        Categories = category_response.Content;
+        Categories = new List<string>();
+        try
+        {
+            var category_response = await _contosoAPI.GetCategoriesAsync();
+            Categories = category_response.Content ?? new List<string>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to retrieve categories.");
+        }
     
         bool isCategorySelected = HttpContext.Session.Get<string>("CategorySelected") != null;
         bool isPageSelected = HttpContext.Session.Get<int>("CurrentPage") > 0;
@@ -62,15 +73,42 @@ public class HomeModel : PageModel
         }
 
 
-        var pagedProducts = await GetPagedFilteredProduct(CurrentPage, CategorySelected);
-
-        Products = pagedProducts.Items;
-        TotalPages = (int)Math.Ceiling((double)pagedProducts.TotalCount / pagedProducts.PageSize);
+        try
+        {
+            var pagedProducts = await GetPagedFilteredProduct(CurrentPage, CategorySelected ?? string.Empty);
+            if (pagedProducts != null)
+            {
+                Products = pagedProducts.Items ?? new List<ProductDto>();
+                TotalPages = pagedProducts.PageSize > 0 ? (int)Math.Ceiling((double)pagedProducts.TotalCount / pagedProducts.PageSize) : 0;
+            }
+            else
+            {
+                Products = new List<ProductDto>();
+                TotalPages = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve products page {Page}.", CurrentPage);
+            Products = new List<ProductDto>();
+            TotalPages = 0;
+            ErrorMessage = "Failed to load products.";
+        }
 
         // Resolve blob-based display image URLs with ReleaseDate logic.
-        foreach (var p in Products)
+        if (Products != null)
         {
-            p.DisplayImageUrl = await _blobImageService.GetDisplayImageUrlAsync(p.ImageUrl);
+            foreach (var p in Products)
+            {
+                try
+                {
+                    p.DisplayImageUrl = await _blobImageService.GetDisplayImageUrlAsync(p.ImageUrl);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed generating image URL for product {ProductId}.", p.Id);
+                }
+            }
         }
 
     }

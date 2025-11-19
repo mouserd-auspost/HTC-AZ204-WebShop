@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 public class ProductEditModel : PageModel
 {
         private readonly IContosoAPI _contosoAPI;
+        private readonly IBlobImageService _blobImageService;
         
         public bool isAdmin { get; set; } = true;
 
@@ -18,9 +19,10 @@ public class ProductEditModel : PageModel
 
         public string ErrorMessage { get; set; }
 
-        public ProductEditModel(IContosoAPI contosoAPI)
+        public ProductEditModel(IContosoAPI contosoAPI, IBlobImageService blobImageService)
         {
             _contosoAPI = contosoAPI;
+            _blobImageService = blobImageService;
         }
 
         public async Task OnGetAsync(int id)
@@ -46,16 +48,7 @@ public class ProductEditModel : PageModel
 
             if (Image != null && Image.Length > 0)
             {
-                string fileName = Image.FileName;
-
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images", fileName);
-                // Save image to wwwroot/images
-                
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await Image.CopyToAsync(stream);
-                }
-
+                string fileName = Path.GetFileName(Image.FileName);
 
                 using (var memoryStream = new MemoryStream())
                 {
@@ -63,7 +56,26 @@ public class ProductEditModel : PageModel
                     Product.Image = memoryStream.ToArray();
                 }
 
-                Product.ImageUrl = fileName;
+                try
+                {
+                    IDictionary<string, string>? metadata = null;
+                    if (Product.ReleaseDate.HasValue)
+                    {
+                        metadata = new Dictionary<string, string>
+                        {
+                            { "ReleaseDate", Product.ReleaseDate.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ") }
+                        };
+                    }
+
+                    await _blobImageService.UploadImageAsync(fileName, Product.Image, metadata);
+                    Product.ImageUrl = fileName;
+                    Product.Image = null;
+                }
+                catch (Exception ex)
+                {
+                    ErrorMessage = "Failed to upload image: " + ex.Message;
+                    return Page();
+                }
             }
 
             Product.Id = productId;

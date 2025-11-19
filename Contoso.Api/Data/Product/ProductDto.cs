@@ -17,5 +17,7 @@ namespace Contoso.Api.Data
         public string? ImageUrl { get; set; }
 
         public byte[]? Image { get; set; }
+
+        public DateTime? ReleaseDate { get; set; }
     }
 }
