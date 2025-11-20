@@ -21,7 +21,7 @@
                 <div class="col-md-6">
                     <div class="form-group">
                         <label for="productImage">Image</label>
-                        <img id="imagePreview" src="@(Model.DisplayImageUrl ?? Url.Content("~/images/" + Model.Product.ImageUrl))" alt="Product Image" class="img-thumbnail" style="cursor: pointer; width: 400px; height: auto;" />
+                        <img id="imagePreview" src="@Model.DisplayImageUrl" alt="Product Image" class="img-thumbnail" style="cursor: pointer; width: 400px; height: auto;" />
                         <input type="file" id="productImage" name="Image" class="form-control" style="display: none;" asp-for="Image"/>
                     </div>
                 </div>
