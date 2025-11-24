@@ -1,29 +1,12 @@
-# Stage 1: Build
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
-
-# Copy csproj and restore dependencies
-COPY Contoso.WebApp.csproj .
-RUN dotnet restore "Contoso.WebApp.csproj"
-
-# Copy the rest of the source code
-COPY . .
-
-# Build the application
-RUN dotnet build "Contoso.WebApp.csproj" -c Release -o /app/build
-
-# Stage 2: Publish
-FROM build AS publish
-RUN dotnet publish "Contoso.WebApp.csproj" -c Release -o /app/publish /p:UseAppHost=false
-
-# Stage 3: Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+# Use the ASP.NET runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-# Copy published output from publish stage
-COPY --from=publish /app/publish .
+# Copy pre-built publish artifacts
+# Assumes publish folder is available at build context
+COPY bin/Release/net8.0/publish/ .
 
 # Set the entry point
 ENTRYPOINT ["dotnet", "Contoso.WebApp.dll"]
