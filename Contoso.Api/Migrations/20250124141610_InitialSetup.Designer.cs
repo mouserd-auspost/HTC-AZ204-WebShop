@@ -20,18 +20,12 @@ namespace Contoso.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
-
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+                .HasAnnotation("ProductVersion", "9.0.0");
 
             modelBuilder.Entity("Contoso.Api.Models.Order", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .ValueGeneratedOnAdd();
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -56,10 +50,7 @@ namespace Contoso.Api.Migrations
             modelBuilder.Entity("Contoso.Api.Models.OrderItem", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .ValueGeneratedOnAdd();
 
                     b.Property<int>("OrderId")
                         .HasColumnType("int");
@@ -85,10 +76,7 @@ namespace Contoso.Api.Migrations
             modelBuilder.Entity("Contoso.Api.Models.Product", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .ValueGeneratedOnAdd();
 
                     b.Property<string>("Category")
                         .HasColumnType("nvarchar(max)");
@@ -116,10 +104,7 @@ namespace Contoso.Api.Migrations
             modelBuilder.Entity("Contoso.Api.Models.User", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .ValueGeneratedOnAdd();
 
                     b.Property<string>("Address")
                         .HasColumnType("nvarchar(max)");

@@ -5,6 +5,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text;
 using Contoso.Api.Configuration;
+using Azure.Core;
+using Azure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,14 +47,31 @@ builder.Services.AddTransient<IAuthenticationService, AuthenticationService>();
 builder.Services.AddTransient<IOrderService, OrderService>();
 builder.Services.AddTransient<IUserService, UserService>();
 
-// Get connection string for SQL Server
-var connectionString = builder.Configuration.GetConnectionString("ContosoDBConnection");
+// Configure Cosmos DB for EF Core using RBAC (DefaultAzureCredential) when available
+var cosmosEndpoint = builder.Configuration["Azure:CosmosDB:AccountEndpoint"];
+var cosmosDatabase = builder.Configuration["Azure:CosmosDB:DatabaseName"];
 
-// Add DbContext
-builder.Services.AddDbContext<ContosoDbContext>(options =>
+
+if (!string.IsNullOrEmpty(cosmosEndpoint) && !string.IsNullOrEmpty(cosmosDatabase))
 {
-    options.UseSqlServer(connectionString);
-});
+    // Use DefaultAzureCredential to obtain AAD token (RBAC) for Cosmos DB
+    var credential = new DefaultAzureCredential();
+
+    // Configure logging for database startup info (do not log secrets)
+    builder.Logging.AddSimpleConsole();
+
+    var logger = LoggerFactory.Create(factory => factory.AddSimpleConsole()).CreateLogger("Startup");
+    logger.LogInformation("Configuring Cosmos DB. Endpoint: {endpoint}, Database: {database}", cosmosEndpoint, cosmosDatabase);
+
+    builder.Services.AddDbContext<ContosoDbContext>(options =>
+    {
+        options.UseCosmos(cosmosEndpoint, credential, cosmosDatabase);
+    });
+}
+else
+{
+    throw new Exception("Cosmos DB configuration is missing in appsettings.json");
+}
 
 var app = builder.Build();
 
