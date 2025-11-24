@@ -2,6 +2,8 @@
 using System.Threading.Tasks;
 using Contoso.Api.Models;
 using Microsoft.Azure.Cosmos;
+using Azure.Core;
+using Azure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -27,9 +29,10 @@ class Program
 
             using var sqlContext = new ContosoDbContext(optionsBuilder.Options);
 
-            using CosmosClient cosmosClient = new CosmosClient(config["Azure:CosmosDB:ConnectionString"]);
-
-            var database = cosmosClient.GetDatabase(config["Azure:CosmosDB:DatabaseName"]);
+            var accountEndpoint = config["Azure:CosmosDB:AccountEndpoint"];
+            var databaseName = config["Azure:CosmosDB:DatabaseName"];
+            CosmosClient cosmosClient = new CosmosClient(accountEndpoint, new DefaultAzureCredential());
+            var database = cosmosClient.GetDatabase(databaseName);
 
             var container = database.GetContainer("Users");
 
