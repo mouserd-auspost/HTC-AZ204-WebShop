@@ -107,13 +107,28 @@ public class ProductsController : ControllerBase
 
     [HttpPost("create/bulk")]
     [Authorize]
-    public async Task<IActionResult> CreateProductsAsync()
+    public async Task<IActionResult> CreateProductsAsync(List<ProductDto> products)
     {
-         ///////////////////////
-        //// YOUR CODE HERE ///
-       ///////////////////////
-       
-       return  BadRequest();
+        if (products == null || products.Count == 0)
+        {
+            return BadRequest("No products provided.");
+        }
+
+        try
+        {
+            var created = new List<ProductDto>();
+            foreach (var p in products)
+            {
+                var createdProduct = await _productService.CreateProductAsync(p);
+                created.Add(createdProduct);
+            }
+
+            return Ok(created);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, "Failed to create products: " + ex.Message);
+        }
     }
 
 

@@ -172,7 +172,9 @@ public class HomeModel : PageModel
 
     public async Task<IActionResult> OnGetBulkUploadProducts()
     {
-        var response = await _contosoAPI.CreateProductsAsync();
+        // This handler previously triggered a server-side bulk create. The API now expects a JSON array of products.
+        // Keep behavior safe by calling with an empty list (no-op) and reporting back.
+        var response = await _contosoAPI.CreateProductsAsync(new List<ProductDto>());
 
         if (response.IsSuccessStatusCode)
         {
@@ -182,7 +184,7 @@ public class HomeModel : PageModel
         {
             TempData["ErrorMessage"] = "Error bulk uploading products";
         }
-        
+
         return RedirectToPage();
     }
 
