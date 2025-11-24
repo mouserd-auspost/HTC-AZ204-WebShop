@@ -1,0 +1,98 @@
+@page "/Product/CreateMultiple"
+@model ProductCreateMultipleModel
+
+@if (HttpContext.Session.GetString("IsAdmin") == "true" && HttpContext.Session.GetString("AuthToken") != null)
+{
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div  id="successMessage" class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <div class="admin-edit-form">
+        <h3>Create Multiple Products</h3>
+        <form method="post" enctype="multipart/form-data" asp-page-handler="CreateProducts">
+            <div id="productsContainer">
+                <!-- Product blocks will be inserted here -->
+            </div>
+
+            <div class="row d-flex justify-content-center mt-2">
+                <div class="col-md-12 text-center"> 
+                    <button type="button" id="addProductBtn" class="btn btn-secondary">Add another product</button>
+                    <button type="submit" class="btn btn-primary">Create All</button>
+                    <a asp-page="/Home/Home" class="btn btn-secondary alert-danger">Cancel</a>
+                </div>       
+            </div>
+        </form>
+    </div>
+
+    <!-- Template for a single product block -->
+    <template id="productTemplate">
+        <div class="product-block card mb-3 p-3">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" name="Products[__index__].Name" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Price</label>
+                        <input type="text" name="Products[__index__].Price" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <input type="text" name="Products[__index__].Category" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="Products[__index__].Description" class="form-control"></textarea>
+                    </div>
+                    <div class="form-group mt-3">
+                        <label>Image</label>
+                        <!-- All file inputs share the same name 'Images' so model binding yields a list in the same order -->
+                        <input type="file" name="Images" class="form-control image-input" />
+                    </div>
+                </div>
+            </div>
+            <div class="text-end mt-2">
+                <button type="button" class="btn btn-sm btn-danger remove-product">Remove</button>
+            </div>
+        </div>
+    </template>
+
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var container = document.getElementById('productsContainer');
+            var template = document.getElementById('productTemplate').innerHTML;
+            var addBtn = document.getElementById('addProductBtn');
+            var index = 0;
+
+            function addProduct() {
+                var html = template.replace(/__index__/g, index);
+                var wrapper = document.createElement('div');
+                wrapper.innerHTML = html;
+                // attach remove handler
+                var removeBtn = wrapper.querySelector('.remove-product');
+                removeBtn.addEventListener('click', function () { wrapper.remove(); });
+                container.appendChild(wrapper);
+                index++;
+            }
+
+            // Add initial product block
+            addProduct();
+
+            addBtn.addEventListener('click', function () { addProduct(); });
+
+            var successMessage = document.getElementById("successMessage");
+            if (successMessage) {
+                setTimeout(function() { successMessage.style.display = "none"; }, 1500);
+            }
+        });
+    </script>
+}
