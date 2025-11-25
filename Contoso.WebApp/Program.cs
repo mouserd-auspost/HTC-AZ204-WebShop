@@ -13,8 +13,17 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Identity.Web.UI;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure forwarded headers for proper HTTPS detection behind proxies/load balancers
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Add services to the container.
 builder.Services.AddRazorPages()
@@ -52,53 +61,13 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
     options.NonceCookie.SecurePolicy = isDev ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
     // Persist tokens from the OIDC response so they can be retrieved with GetTokenAsync
     options.SaveTokens = true;
+    
+    // Require HTTPS for redirect URIs in production
+    if (!isDev)
+    {
+        options.RequireHttpsMetadata = true;
+    }
 
-    // options.Events.OnTokenValidated = async ctx =>
-    //     {
-    //         var logger = ctx.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-            
-    //         // TokenEndpointResponse may be null in certain flows (e.g., implicit flow)
-    //         // Fall back to the tokens saved in the authentication properties
-    //         string? accessToken = null;
-    //         string? idToken = null;
-
-    //         if (ctx.TokenEndpointResponse != null)
-    //         {
-    //             logger.LogInformation("Token validated: Tokens retrieved from TokenEndpointResponse");
-    //             accessToken = ctx.TokenEndpointResponse.AccessToken;
-    //             idToken = ctx.TokenEndpointResponse.IdToken;
-    //         }
-    //         else if (ctx.Properties != null)
-    //         {
-    //             logger.LogInformation("Token validated: TokenEndpointResponse was null, retrieving from Properties");
-    //             // Try to get tokens from saved properties (since SaveTokens = true)
-    //             accessToken = ctx.Properties.GetTokenValue("access_token");
-    //             idToken = ctx.Properties.GetTokenValue("id_token");
-    //         }
-    //         else
-    //         {
-    //             logger.LogWarning("Token validated: Both TokenEndpointResponse and Properties are null");
-    //         }
-
-    //         logger.LogInformation("Access token present: {HasAccessToken}, ID token present: {HasIdToken}", 
-    //             !string.IsNullOrEmpty(accessToken), !string.IsNullOrEmpty(idToken));
-
-    //         // Example: store in session
-    //         var http = ctx.HttpContext;
-    //         http.Session.SetString("AuthToken", accessToken ?? "");
-    //         http.Session.SetString("IdToken", idToken ?? "");
-
-    //         var name = ctx.Principal?.FindFirst("name")?.Value;
-    //         if (name != null)
-    //         {
-    //             logger.LogInformation("User authenticated: {UserName}", name);
-    //             http.Session.SetString("UserName", name);
-    //         }
-    //         else
-    //         {
-    //             logger.LogWarning("Token validated but no 'name' claim found in Principal");
-    //         }
-    //     };
 });
 
 builder.Services.AddControllersWithViews().AddMicrosoftIdentityUI();
@@ -109,7 +78,6 @@ builder.Services.AddTransient<LoggingHandler>();
 builder.Services.AddHttpClient<IContosoAPI>(client => {
     client.BaseAddress = new Uri(builder.Configuration["BackendUrl"]);
 })
-// .AddHttpMessageHandler(() => new LoggingHandler())
 .AddHttpMessageHandler<AuthHandler>()
 .AddTypedClient(client => RestService.For<IContosoAPI>(client));
 
@@ -118,6 +86,9 @@ builder.Services.AddSingleton<IBlobImageService, BlobImageService>();
 
 
 var app = builder.Build();
+
+// Use forwarded headers BEFORE other middleware
+app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
