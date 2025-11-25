@@ -6,10 +6,6 @@ public class LogoutModel : PageModel
 
     public IActionResult OnGet()
     {
-
-        HttpContext.Session.Remove("AuthToken");
-        HttpContext.Session.Clear();
-        
-        return RedirectToPage("/Home/Home");
+        return Redirect("/auth/logout");
     }
 }
