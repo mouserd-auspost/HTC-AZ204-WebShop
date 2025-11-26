@@ -68,6 +68,30 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
         options.RequireHttpsMetadata = true;
     }
 
+    options.Events.OnTokenValidated = async ctx =>
+        {
+            var http = ctx.HttpContext;
+            var accessToken = ctx.TokenEndpointResponse?.AccessToken 
+                ?? ctx.Properties?.GetTokenValue("access_token");
+            var idToken = ctx.TokenEndpointResponse?.IdToken 
+                ?? ctx.Properties?.GetTokenValue("id_token");
+
+            http.Session.SetString("AuthToken", accessToken ?? "");
+            http.Session.SetString("IdToken", idToken ?? "");
+
+            var name = ctx.Principal?.FindFirst("name")?.Value;
+            if (name != null)
+            {
+                http.Session.SetString("UserName", name);
+            }
+            
+            var email = ctx.Principal?.FindFirst("email")?.Value 
+                ?? ctx.Principal?.FindFirst("preferred_username")?.Value;
+            
+            // Hacky solution to set admin based on specific email address! This would ideally be done with roles/groups.
+            var isAdmin = email?.Equals("17-htc@20251117htcaz204.onmicrosoft.com", StringComparison.OrdinalIgnoreCase) ?? false;
+            http.Session.SetString("IsAdmin", isAdmin.ToString().ToLower());
+        };
 });
 
 builder.Services.AddControllersWithViews().AddMicrosoftIdentityUI();
@@ -125,6 +149,7 @@ app.MapGet("/logout", async (HttpContext http, IConfiguration config) =>
     http.Session.Remove("AuthToken");
     http.Session.Remove("AuthTokenResponse");
     http.Session.Remove("UserName");
+    http.Session.Remove("IsAdmin");
     http.Session.Clear();
 
     var entra = config.GetSection("Entra");
