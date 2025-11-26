@@ -3,6 +3,9 @@ using AutoMapper;
 using Contoso.Api.Data;
 using Contoso.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Azure.Messaging.EventGrid;
+using Azure;
+using Microsoft.Extensions.Configuration;
 
 namespace Contoso.Api.Services;
 
@@ -10,11 +13,31 @@ public class ProductsService : IProductsService
 {
     private readonly ContosoDbContext _context;
     private readonly IMapper _mapper;
+    private readonly EventGridPublisherClient? _eventGridClient;
+    private readonly IConfiguration _configuration;
 
-    public ProductsService(ContosoDbContext context, IMapper mapper)
+    public ProductsService(ContosoDbContext context, IMapper mapper, IConfiguration configuration)
     {
         _context = context;
         _mapper = mapper;
+        _configuration = configuration;
+
+        // Configure Event Grid publisher if configured
+        var topicEndpoint = _configuration["EventGrid:ProductUpdatedTopicEndpoint"];
+        var topicKey = _configuration["EventGrid:ProductUpdatedTopicKey"];
+
+        if (!string.IsNullOrEmpty(topicEndpoint) && !string.IsNullOrEmpty(topicKey))
+        {
+            try
+            {
+                _eventGridClient = new EventGridPublisherClient(new Uri(topicEndpoint), new AzureKeyCredential(topicKey));
+            }
+            catch
+            {
+                // If client can't be created, leave null so publishing is optional and doesn't break the update flow
+                _eventGridClient = null;
+            }
+        }
     }
 
     public async Task<PagedResult<ProductDto>> GetProductsAsync(QueryParameters queryParameters)
@@ -80,6 +103,36 @@ public class ProductsService : IProductsService
         _context.Entry(existingProduct).State = EntityState.Modified;
 
         await _context.SaveChangesAsync();
+
+        // Publish ProductUpdated event to Event Grid (optional)
+        if (_eventGridClient != null)
+        {
+            try
+            {
+                var eventData = new
+                {
+                    Id = product.Id,
+                    Name = product.Name,
+                    Description = product.Description,
+                    Price = product.Price,
+                    Category = product.Category,
+                    ImageUrl = product.ImageUrl
+                };
+
+                var evt = new EventGridEvent(
+                    subject: $"Products/{product.Id}",
+                    eventType: "Contoso.Product.Updated",
+                    dataVersion: "1.0",
+                    data: eventData
+                );
+
+                await _eventGridClient.SendEventsAsync(new[] { evt });
+            }
+            catch
+            {
+                // Swallow exceptions to avoid breaking the product update flow if Event Grid publishing fails
+            }
+        }
 
         return _mapper.Map<ProductDto>(existingProduct);
     }
